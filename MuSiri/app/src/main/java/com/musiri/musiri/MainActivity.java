@@ -10,6 +10,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import Parsing.CMDParser;
+
 public class MainActivity extends AppCompatActivity
 {
     TextView textView;
@@ -31,8 +33,6 @@ public class MainActivity extends AppCompatActivity
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.ENGLISH);
         startActivityForResult(speechRecognizerIntent, 1);
-
-
     }
 
     @Override
@@ -41,6 +41,9 @@ public class MainActivity extends AppCompatActivity
         if(requestCode == 1)
         {
             ArrayList<String> speech;
+
+            if(intent == null)
+                return;
 
             speech = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
@@ -51,6 +54,8 @@ public class MainActivity extends AppCompatActivity
                 text += speech.get(i);
                 text += " ";
             }
+
+            CMDParser.parseCommand(text);
 
             textView.setText(text);
         }
