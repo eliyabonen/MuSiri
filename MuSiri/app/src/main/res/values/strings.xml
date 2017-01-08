@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">MuSiri</string>
+    <string name="change_music_folder">Change Music Folder</string>
 </resources>
