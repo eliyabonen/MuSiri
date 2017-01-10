@@ -105,8 +105,6 @@ public class MainActivity extends AppCompatActivity
             wordsList = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             new CMDParser(wordsList, DB);
 
-            Toast.makeText(this, DB.getStringValue("music_path"), Toast.LENGTH_LONG).show();
-
             // converting the words to list and sending it to the textview
             for(int i = 0; i < wordsList.size(); i++)
             {
