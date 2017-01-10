@@ -3,6 +3,7 @@ package Parsing;
 import android.content.SharedPreferences;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import DataBase.DatabaseInterface;
@@ -31,5 +32,9 @@ public class CMDParser
     private void playCommand()
     {
         String musicFolderPath = pathsDB.getStringValue("music_path");
+
+        // gets all the files in the music directory
+        File musicFolder = new File(musicFolderPath);
+        File[] files = musicFolder.listFiles();
     }
 }
