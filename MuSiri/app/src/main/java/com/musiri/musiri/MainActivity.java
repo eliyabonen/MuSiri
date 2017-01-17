@@ -3,6 +3,7 @@ package com.musiri.musiri;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -103,7 +104,7 @@ public class MainActivity extends AppCompatActivity
 
             // getting a word list from the intent and sending it to the command parser
             wordsList = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            new CMDParser(wordsList, DB);
+            new CMDParser(wordsList, DB ,this);
 
             // converting the words to list and sending it to the textview
             for(int i = 0; i < wordsList.size(); i++)
@@ -139,8 +140,5 @@ public class MainActivity extends AppCompatActivity
         }
 
         return super.onOptionsItemSelected(item);
-
-        MediaPlayer p = new MediaPlayer("");
-        
     }
 }
