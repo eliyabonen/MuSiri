@@ -99,21 +99,21 @@ public class MainActivity extends AppCompatActivity
 
         if(requestCode == 1)
         {
-            ArrayList<String> wordsList;
-            String text = "";
+            ArrayList<String> APIWordsList;
+            ArrayList<String> ParsedWordsList = new ArrayList<>();
+            String[] words;
 
             // getting a word list from the intent and sending it to the command parser
-            wordsList = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            new CMDParser(wordsList, DB ,this);
+            APIWordsList = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
-            // converting the words to list and sending it to the textview
-            for(int i = 0; i < wordsList.size(); i++)
-            {
-                text += wordsList.get(i);
-                text += " ";
-            }
+            // converting the string to a list of words
+            words = APIWordsList.get(0).split(" ");
+            for(int i = 0; i < words.length; i++)
+                ParsedWordsList.add(words[i]);
 
-            textView.setText(text);
+            new CMDParser(ParsedWordsList, DB ,this);
+
+            textView.setText(APIWordsList.get(0));
         }
     }
 

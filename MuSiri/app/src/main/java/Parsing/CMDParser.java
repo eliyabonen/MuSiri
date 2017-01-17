@@ -24,21 +24,22 @@ public class CMDParser
         this.pathsDB = pathsDB;
         this.mainAct = mainAct;
         this.wordsList = wordsList;
+
         parseCommand();
     }
 
     private void parseCommand()
     {
-        String command = wordsList.get(0);
+        String command = wordsList.get(0).toString();
 
-        if(command.equals("play"))
+        if(command.toLowerCase().equals("play"))
             playCommand();
     }
 
     private void playCommand()
     {
         String musicFolderPath = pathsDB.getStringValue("music_path");
-
+        System.out.println("******IN THE PLAY*****");
 
         // gets all the files in the music directory
         File musicFolder = new File(musicFolderPath);
@@ -50,16 +51,17 @@ public class CMDParser
             boolean allStringsFound = false;
             if(".mp3".equals(files[i].getName().substring(files[i].getName().length() - 4)))
             {
-                String[] fileName = files[i].getName().split(" ");
-                fileName[fileName.length - 1] = fileName[fileName.length - 1].substring(0,fileName.length - 5);
-                if(this.wordsList.size() - 1 <= fileName.length)
+                String[] fileNameWordsArray = files[i].getName().split(" ");
+                fileNameWordsArray[fileNameWordsArray.length - 1] = fileNameWordsArray[fileNameWordsArray.length - 1].substring(0,fileNameWordsArray[fileNameWordsArray.length - 1].length() - 4);
+
+                if(this.wordsList.size() - 1 <= fileNameWordsArray.length)
                 {
-                    for(int j = 0; j <= (fileName.length - this.wordsList.size() - 1) && !allStringsFound; j++)
+                    for(int j = 0; j <= (fileNameWordsArray.length - this.wordsList.size() - 1) && !allStringsFound; j++)
                     {
                         boolean wordFound = true;
                         for(int k = 0; k < this.wordsList.size() - 1 && wordFound; k++)
                         {
-                            wordFound = compare((String)this.wordsList.get(k + 1),(String)fileName[j + k]);
+                            wordFound = compare(this.wordsList.get(k + 1),fileNameWordsArray[j + k]);
                             if(wordFound && k == this.wordsList.size() - 2)
                                 allStringsFound = true;
                         }
@@ -67,26 +69,23 @@ public class CMDParser
                 }
             }
             if(allStringsFound)
+            {
+                System.out.println("************************* " + files[i].getName());
                 rightSongs.add(files[i].getName());
+            }
         }
-        Uri u = Uri.parse(musicFolderPath + rightSongs.get(0).toString());
+        /*Uri u = Uri.parse(musicFolderPath + rightSongs.get(0).toString());
         MediaPlayer mediaPlayer = MediaPlayer.create(mainAct.getApplicationContext(), u);
-        mediaPlayer.start();
-
+        mediaPlayer.start();*/
 
     }
     private boolean compare(String w1, String w2)
     {
-        boolean wrongWord = true;
-        if(w1.length() != w2.length())
-            return false;
-
-        for(int i = 0; i < w1.length() && wrongWord; i++)
+        for(int i = 0; i < w1.length(); i++)
         {
-            if(w1.substring(i,i).toUpperCase() != w2.substring(i,i).toUpperCase())
-                wrongWord = false;
-
+            if(w1.toLowerCase().charAt(i) != w2.toLowerCase().charAt(i))
+                return false;
         }
-        return wrongWord;
+        return true;
     }
 }
