@@ -11,20 +11,62 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.musiri.musiri.MainActivity">
 
-    <ImageView
+    <!--
+     This linear layout is for the textviews contains what
+     the user said
+     -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:srcCompat="@mipmap/microphone"
-        android:id="@+id/speakImageView"
-        android:onClick="onSpeakButtonClick"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true" />
+        android:orientation="vertical"
+        android:id="@+id/activity_main_textviews_linear_layout">
+    </LinearLayout>
 
-    <TextView
+    <!--
+    This linear layout is for the buttons:
+    play/pause, microphone, stop
+    -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/textView"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginStart="24dp" />
+        android:layout_alignParentBottom="true"
+        android:layout_centerInParent="true"
+        android:orientation="horizontal"
+        android:id="@+id/activity_main_buttons_linear_layout">
+
+        <!--
+       The play/pause button
+       -->
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@mipmap/pause_icon"
+            android:id="@+id/pausePlayImageView"
+            android:onClick="onPlayPauseButtonClick"
+            android:visibility="gone"/>
+
+        <!--
+       The microphone button
+       -->
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@mipmap/microphone"
+            android:id="@+id/speakImageView"
+            android:onClick="onSpeakButtonClick"
+            android:layout_marginLeft="65dp"
+            android:layout_marginRight="65dp"/>
+
+        <!--
+         The stop button
+         -->
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@mipmap/stop_icon"
+            android:onClick="onStopButtonClick"
+            android:id="@+id/stopImageView"
+            android:visibility="gone"/>
+
+    </LinearLayout>
 </RelativeLayout>

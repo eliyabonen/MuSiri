@@ -2,14 +2,21 @@ package Parsing;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.widget.Toast;
 
+import com.musiri.musiri.AudioController;
+
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import DataBase.DatabaseInterface;
 
@@ -17,13 +24,13 @@ public class CMDParser
 {
     private ArrayList<String> wordsList;
     private DatabaseInterface pathsDB;
-    private Context mainAct;
+    private AudioController audioController;
 
-    public CMDParser(ArrayList<String> wordsList, DatabaseInterface pathsDB, Context mainAct)
+    public CMDParser(ArrayList<String> wordsList, DatabaseInterface pathsDB, AudioController audioController)
     {
         this.pathsDB = pathsDB;
-        this.mainAct = mainAct;
         this.wordsList = wordsList;
+        this.audioController = audioController;
 
         parseCommand();
     }
@@ -33,59 +40,137 @@ public class CMDParser
         String command = wordsList.get(0).toString();
 
         if(command.toLowerCase().equals("play"))
-            playCommand();
+        {
+            if(wordsList.size() < 3)
+                return;
+
+            if(wordsList.get(1).equals("song"))
+                playSongCommand(pathsDB.getStringValue("music_path"));
+
+            else if(wordsList.get(1).equals("playlist"))
+                playPlaylistCommand((pathsDB.getStringValue("music_path") + "/" + wordsList.get(2)));
+        }
+        else if(command.toLowerCase().equals("pause"))
+            pauseCommand();
+        else if(command.toLowerCase().equals("stop"))
+            stopCommand();
+        else if(command.toLowerCase().equals("continue"))
+            continueCommand();
     }
 
-    private void playCommand()
+
+    // getting the most matched song
+    private void playSongCommand(String path)
     {
-        String musicFolderPath = pathsDB.getStringValue("music_path");
-        System.out.println("******IN THE PLAY*****");
-
         // gets all the files in the music directory
-        File musicFolder = new File(musicFolderPath);
-        File[] files = musicFolder.listFiles();
-        ArrayList<String> rightSongs = new ArrayList<String>();
+        File musicFolder = new File(path);
 
+        // if it doesn't exists or it is not a directory then get out
+        if(!musicFolder.exists() || !musicFolder.isDirectory())
+            return;
+
+        File[] files = musicFolder.listFiles();
+
+        // if it has songs in it
+        if(files.length == 0)
+            return;
+
+        //Map<String, Integer> matchedSongs = new HashMap<String, Integer>();
+        int matchedWords, maxMatchedWords = 0, biggestMatchIndex = 0;
+
+        // loops through all the files that in the default directory
         for(int i = 0; i < files.length; i++)
         {
-            boolean allStringsFound = false;
+            matchedWords = 0;
+
+            // checks if the file is mp3 formatted
             if(".mp3".equals(files[i].getName().substring(files[i].getName().length() - 4)))
             {
+                // parsing the file name to array of words
                 String[] fileNameWordsArray = files[i].getName().split(" ");
                 fileNameWordsArray[fileNameWordsArray.length - 1] = fileNameWordsArray[fileNameWordsArray.length - 1].substring(0,fileNameWordsArray[fileNameWordsArray.length - 1].length() - 4);
 
-                if(this.wordsList.size() - 1 <= fileNameWordsArray.length)
+                // checks if the the given song has more words than the checked song(if so it doesn't check if it is matching)
+                if(this.wordsList.size() - 2 <= fileNameWordsArray.length)
                 {
-                    for(int j = 0; j <= (fileNameWordsArray.length - this.wordsList.size() - 1) && !allStringsFound; j++)
+                    // loop through every word and checking if there is matched words
+                    for(int j = 2; j < wordsList.size(); j++)
                     {
-                        boolean wordFound = true;
-                        for(int k = 0; k < this.wordsList.size() - 1 && wordFound; k++)
+                        for(int k = 0; k < fileNameWordsArray.length; k++)
                         {
-                            wordFound = compare(this.wordsList.get(k + 1),fileNameWordsArray[j + k]);
-                            if(wordFound && k == this.wordsList.size() - 2)
-                                allStringsFound = true;
+                            // checks if the file name word contains a word from the user, the word from the user must be greater than one char for preventing checking issues
+                            if(fileNameWordsArray[k].toLowerCase().contains(wordsList.get(j).toLowerCase()) && (wordsList.get(j).length() > 1))
+                            {
+                                matchedWords++;
+                            }
                         }
+                    }
+
+                    //matchedSongs.put(files[i].getName().toLowerCase(), matchedWords);
+
+                    // getting the maximum words match and saving it's index
+                    if(maxMatchedWords <= matchedWords)
+                    {
+                        biggestMatchIndex = i;
+                        maxMatchedWords = matchedWords;
                     }
                 }
             }
-            if(allStringsFound)
-            {
-                System.out.println("************************* " + files[i].getName());
-                rightSongs.add(files[i].getName());
-            }
         }
-        /*Uri u = Uri.parse(musicFolderPath + rightSongs.get(0).toString());
-        MediaPlayer mediaPlayer = MediaPlayer.create(mainAct.getApplicationContext(), u);
-        mediaPlayer.start();*/
 
-    }
-    private boolean compare(String w1, String w2)
-    {
-        for(int i = 0; i < w1.length(); i++)
+        System.out.println("************Best match: " + files[biggestMatchIndex].getName());
+
+        // play the most matched song, and if there is no match then it doesn't play anything
+        if(maxMatchedWords != 0)
         {
-            if(w1.toLowerCase().charAt(i) != w2.toLowerCase().charAt(i))
-                return false;
+            audioController.playSong(files[biggestMatchIndex].getAbsolutePath());
+
         }
-        return true;
+    }
+
+    private void playPlaylistCommand(String path)
+    {
+        // gets all the files in the music directory
+        File musicFolder = new File(path);
+
+        // if it doesn't exists or it is not a directory then get out
+        if(!musicFolder.exists() || !musicFolder.isDirectory())
+            return;
+
+        File[] files = musicFolder.listFiles();
+
+        // if it files songs in it
+        if(files.length == 0)
+            return;
+
+        ArrayList<String> songs = new ArrayList<>();
+
+        // gets all the mp3 formatted songs from the directory into the songs array
+        for(int i = 0; i < files.length; i++)
+        {
+            if(files[i].getName().substring(files[i].getName().length() - 4).equals(".mp3"))
+                songs.add(files[i].getAbsolutePath());
+        }
+
+        if(songs.size() > 0)
+            audioController.playPlaylist(songs);
+    }
+
+    private void pauseCommand()
+    {
+        if(wordsList.size() == 1)
+            audioController.pauseMusic();
+    }
+
+    private void stopCommand()
+    {
+        if(wordsList.size() == 1)
+            audioController.stopMusic();
+    }
+
+    private void continueCommand()
+    {
+        if(wordsList.size() == 1)
+            audioController.continueMusic();
     }
 }

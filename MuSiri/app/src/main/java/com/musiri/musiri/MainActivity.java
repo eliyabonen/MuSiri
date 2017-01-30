@@ -1,8 +1,6 @@
 package com.musiri.musiri;
 
-import android.app.AlertDialog;
 import android.content.Intent;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
@@ -11,8 +9,13 @@ import android.speech.RecognizerIntent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.appindexing.Thing;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -21,84 +24,86 @@ import java.util.Locale;
 import DataBase.DatabaseInterface;
 import Parsing.CMDParser;
 
-public class MainActivity extends AppCompatActivity
-{
-    TextView textView;
-    DatabaseInterface DB;
+public class MainActivity extends AppCompatActivity {
+    private DatabaseInterface DB;
+    private AudioController audioController;
+    private GuiButtons guiButtons;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textView = (TextView) findViewById(R.id.textView);
-
         initializeDB();
+
+        /* ASK DVIR */
+        audioController = new AudioController(this);
+        guiButtons = new GuiButtons(this, audioController);
+        audioController.setGuiButtons(guiButtons);
+        /* ASK DVIR */
+
+
+        //startService(new Intent(this, AudioController.class));
     }
 
-    private void initializeDB()
-    {
+    private void initializeDB() {
         DB = new DatabaseInterface("paths", this);
         DB.savePreference("default_path", Environment.getExternalStorageDirectory().getAbsolutePath());
 
-        if(DB.getStringValue("music_path").equals("null"))
+        if (DB.getStringValue("music_path").equals("null"))
             buildDirectoryChooserDialog();
     }
 
-    // when the speak button is clicked
     public void onSpeakButtonClick(View view)
     {
-        // creating the intent for the google speech api
-        Intent speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Start speaking bitch!");
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.ENGLISH);
+        //guiButtons.onSpeakButtonClick(view);
 
-        // start the activity with that intent
-        startActivityForResult(speechRecognizerIntent, 1);
+        ArrayList<String> ParsedWordsList = new ArrayList<>();
+        ParsedWordsList.add("play");
+        ParsedWordsList.add("playlist");
+        ParsedWordsList.add("rock");
+        //ParsedWordsList.add("yoU");
+
+        new CMDParser(ParsedWordsList, DB, audioController);
     }
 
-    private void buildDirectoryChooserDialog()
-    {
-        DirectoryChooserDialog chooserDialog = new DirectoryChooserDialog(this, new DirectoryChooserDialog.DirectoryChooserInterface()
-        {
-            @Override
-            public void onChosenDir(String path)
-            {
-                DB.savePreference("music_path", path);
-            }
+    public void onPlayPauseButtonClick(View view) { guiButtons.onPlayPauseButtonClick(view); }
+    public void onStopButtonClick(View view) { guiButtons.onStopButtonClick(view); }
 
-            @Override
-            public void onCancelClicked()
-            {
-                // if already exists path for the music folder then exit
-                if(!DB.getStringValue("music_path").equals("null"))
-                    return;
+    private void buildDirectoryChooserDialog() {
+        DirectoryChooserDialog chooserDialog = new DirectoryChooserDialog(this,
+                new DirectoryChooserDialog.DirectoryChooserInterface() {
+                    @Override
+                    public void onChosenDir(String path) {
+                        DB.savePreference("music_path", path);
+                    }
 
-                // if not exists it creates new Music folder
-                File folder = new File((DB.getStringValue("default_path")) + "/MuSiriMusic");
+                    @Override
+                    public void onCancelClicked() {
+                        // if already exists path for the music folder then exit
+                        if (!DB.getStringValue("music_path").equals("null"))
+                            return;
 
-                if(!folder.exists())
-                    folder.mkdirs();
+                        // if not exists it creates new Music folder
+                        File folder = new File((DB.getStringValue("default_path")) + "/MuSiriMusic");
 
-                // set it as the music_path
-                DB.savePreference("music_path", folder.getAbsolutePath());
-            }
-        });
+                        if (!folder.exists())
+                            folder.mkdirs();
+
+                        // set it as the music_path
+                        DB.savePreference("music_path", folder.getAbsolutePath());
+                    }
+                });
 
         chooserDialog.ChooseDirectory();
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent)
-    {
-        if(intent == null)
+    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (intent == null)
             return;
 
-        if(requestCode == 1)
-        {
+        if (requestCode == 1) {
             ArrayList<String> APIWordsList;
             ArrayList<String> ParsedWordsList = new ArrayList<>();
             String[] words;
@@ -108,37 +113,45 @@ public class MainActivity extends AppCompatActivity
 
             // converting the string to a list of words
             words = APIWordsList.get(0).split(" ");
-            for(int i = 0; i < words.length; i++)
+            for (int i = 0; i < words.length; i++)
                 ParsedWordsList.add(words[i]);
 
-            new CMDParser(ParsedWordsList, DB ,this);
+            new CMDParser(ParsedWordsList, DB, audioController);
 
-            textView.setText(APIWordsList.get(0));
+            createNewTextView(APIWordsList.get(0));
         }
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+    public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_change_music_folder)
-        {
+        if (id == R.id.action_change_music_folder) {
             buildDirectoryChooserDialog();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void createNewTextView(String text) {
+        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.activity_main_textviews_linear_layout);
+
+        TextView textView = new TextView(this);
+        textView.setText(text);
+        textView.setTextAppearance(this, android.R.style.TextAppearance_Large);
+
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        layoutParams.setMargins(0, 0, 0, 200);
+        textView.setLayoutParams(layoutParams);
+
+        linearLayout.addView(textView);
     }
 }
