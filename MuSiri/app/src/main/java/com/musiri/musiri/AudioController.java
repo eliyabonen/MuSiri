@@ -19,6 +19,7 @@ public class AudioController extends Service
     private ArrayList<String> playlistSongs;
     private Context context;
     private GuiButtons guiButtons;
+    private boolean isPaused = false;
 
     public AudioController(Context context)
     {
@@ -34,18 +35,17 @@ public class AudioController extends Service
 
     public void playSong(final String path)
     {
-        if(mediaPlayer.isPlaying())
+        // if it's already playing a song or if it's paused then don't play the song
+        if(mediaPlayer.isPlaying() || isPaused)
             return;
 
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-
+        // preparing the meidaplayer for playing the song
         try {
             Uri uri = Uri.parse(path);
             mediaPlayer.setDataSource(context, uri);
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setOnPreparedListener(new SongPrepared());
             mediaPlayer.prepareAsync();
-
-            guiButtons.showMusicButtons(true);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -53,42 +53,97 @@ public class AudioController extends Service
 
     public void playPlaylist(final ArrayList<String> songs)
     {
+        // if it's already playing a song then quit
         if(mediaPlayer.isPlaying())
             return;
 
+        // initializing playlist settings
         currPlaylistCounter = 0;
         playlistSongs = songs;
 
+        // play the songs
         mediaPlayer.setOnCompletionListener(new SongCompleted());
         playSong(playlistSongs.get(currPlaylistCounter));
     }
 
     public void pauseMusic()
     {
-        if(mediaPlayer.isPlaying())
-            mediaPlayer.pause();
+        if(!mediaPlayer.isPlaying())
+            return;
+
+        mediaPlayer.pause();
+        isPaused = true;
     }
 
     public void continueMusic()
     {
-        if(!mediaPlayer.isPlaying())
-            mediaPlayer.start();
+        if(mediaPlayer.isPlaying())
+            return;
+
+        mediaPlayer.start();
+        isPaused = false;
     }
 
     public void stopMusic()
     {
-        if(mediaPlayer.isPlaying())
-        {
-            mediaPlayer.stop();
-            mediaPlayer.reset();
+        if(!mediaPlayer.isPlaying() && !isPaused)
+            return;
 
-            guiButtons.showMusicButtons(false);
-        }
+        mediaPlayer.stop();
+        mediaPlayer.reset();
+        isPaused = false;
+
+        guiButtons.showMusicButtons(false);
     }
 
     public boolean isPlaying()
     {
         return mediaPlayer.isPlaying();
+    }
+
+    public boolean isPaused()
+    {
+        return isPaused;
+    }
+
+    private class SongPrepared implements MediaPlayer.OnPreparedListener
+    {
+        @Override
+        public void onPrepared(MediaPlayer mp)
+        {
+            // if it's prepared then start it
+            mp.start();
+
+            // display the music buttons
+            guiButtons.showMusicButtons(true);
+        }
+    }
+
+    private class SongCompleted implements MediaPlayer.OnCompletionListener
+    {
+        @Override
+        public void onCompletion(MediaPlayer mp)
+        {
+            // increasing the playlist song counter
+            currPlaylistCounter++;
+
+            // if the counter reached the number of songs to play
+            if(currPlaylistCounter == playlistSongs.size())
+            {
+                mediaPlayer.stop();
+                mediaPlayer.reset();
+
+                guiButtons.showMusicButtons(false);
+
+                return;
+            }
+
+            // playing the next song by reseting the mediaplayer and playing the next song in the list
+            mediaPlayer.reset();
+            mediaPlayer.setOnCompletionListener(this);
+
+            playSong(playlistSongs.get(currPlaylistCounter));
+        }
     }
 
     @Override
@@ -104,45 +159,12 @@ public class AudioController extends Service
     public void onDestroy() {
         System.out.println("********DESTROYYYYYYYYYYYYYYYYYY");
         //player.stop();
-       // player.release();
+        // player.release();
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    private class SongPrepared implements MediaPlayer.OnPreparedListener
-    {
-        @Override
-        public void onPrepared(MediaPlayer mp)
-        {
-            mp.start();
-        }
-    }
-
-    private class SongCompleted implements MediaPlayer.OnCompletionListener
-    {
-        @Override
-        public void onCompletion(MediaPlayer mp)
-        {
-            currPlaylistCounter++;
-
-            if(currPlaylistCounter == playlistSongs.size())
-            {
-                mediaPlayer.stop();
-                mediaPlayer.reset();
-
-                guiButtons.showMusicButtons(false);
-
-                return;
-            }
-
-            mediaPlayer.reset();
-            mediaPlayer.setOnCompletionListener(this);
-
-            playSong(playlistSongs.get(currPlaylistCounter));
-        }
     }
 }

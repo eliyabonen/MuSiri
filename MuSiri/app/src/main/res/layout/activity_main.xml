@@ -15,12 +15,18 @@
      This linear layout is for the textviews contains what
      the user said
      -->
-    <LinearLayout
-        android:layout_width="wrap_content"
+    <ScrollView
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:id="@+id/activity_main_textviews_linear_layout">
-    </LinearLayout>
+        android:fadeScrollbars="false"
+        android:id="@+id/textViewsScrollView">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:id="@+id/activity_main_textviews_linear_layout">
+        </LinearLayout>
+    </ScrollView>
 
     <!--
     This linear layout is for the buttons:

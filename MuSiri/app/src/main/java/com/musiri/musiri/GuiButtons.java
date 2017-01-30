@@ -27,6 +27,7 @@ public class GuiButtons
         this.audioController = audioController;
     }
 
+    // hide/show the music buttons
     public void showMusicButtons(boolean bool)
     {
         if(bool)
@@ -44,6 +45,10 @@ public class GuiButtons
     // when the user clicked the Speak button
     public void onSpeakButtonClick(View view)
     {
+        // set it to the pause icon
+        if(!audioController.isPaused())
+            buttonPlayPause.setImageResource(R.mipmap.pause_icon);
+
         // creating the intent for the google speech api
         Intent speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 
@@ -55,6 +60,7 @@ public class GuiButtons
         context.startActivityForResult(speechRecognizerIntent, 1);
     }
 
+    // when the user clicked the Play/Pause button
     public void onPlayPauseButtonClick(View view)
     {
         if(audioController.isPlaying())
@@ -69,6 +75,12 @@ public class GuiButtons
         }
     }
 
+    public AppCompatActivity getContext()
+    {
+        return context;
+    }
+
+    // when the user clicked the Stop button
     public void onStopButtonClick(View view)
     {
         audioController.stopMusic();

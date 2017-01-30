@@ -10,6 +10,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.google.android.gms.appindexing.Action;
@@ -56,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onSpeakButtonClick(View view)
     {
-        //guiButtons.onSpeakButtonClick(view);
+        guiButtons.onSpeakButtonClick(view);
 
         ArrayList<String> ParsedWordsList = new ArrayList<>();
         ParsedWordsList.add("play");
@@ -64,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         ParsedWordsList.add("rock");
         //ParsedWordsList.add("yoU");
 
-        new CMDParser(ParsedWordsList, DB, audioController);
+        //new CMDParser(ParsedWordsList, DB, audioController, guiButtons);
     }
 
     public void onPlayPauseButtonClick(View view) { guiButtons.onPlayPauseButtonClick(view); }
@@ -116,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < words.length; i++)
                 ParsedWordsList.add(words[i]);
 
-            new CMDParser(ParsedWordsList, DB, audioController);
+            new CMDParser(ParsedWordsList, DB, audioController, guiButtons);
 
             createNewTextView(APIWordsList.get(0));
         }
@@ -141,7 +142,10 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void createNewTextView(String text) {
+    private void createNewTextView(String text)
+    {
+        final ScrollView scrollView = (ScrollView) findViewById(R.id.textViewsScrollView);
+
         LinearLayout linearLayout = (LinearLayout) findViewById(R.id.activity_main_textviews_linear_layout);
 
         TextView textView = new TextView(this);
@@ -153,5 +157,15 @@ public class MainActivity extends AppCompatActivity {
         textView.setLayoutParams(layoutParams);
 
         linearLayout.addView(textView);
+
+        // set the scrollview to go to the bottom whenever there is a new textview
+        scrollView.post(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                scrollView.fullScroll(View.FOCUS_DOWN);
+            }
+        });
     }
 }

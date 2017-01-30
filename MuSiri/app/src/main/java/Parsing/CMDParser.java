@@ -11,6 +11,8 @@ import android.provider.Settings;
 import android.widget.Toast;
 
 import com.musiri.musiri.AudioController;
+import com.musiri.musiri.GuiButtons;
+import com.musiri.musiri.R;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,12 +27,14 @@ public class CMDParser
     private ArrayList<String> wordsList;
     private DatabaseInterface pathsDB;
     private AudioController audioController;
+    private GuiButtons guiButtons;
 
-    public CMDParser(ArrayList<String> wordsList, DatabaseInterface pathsDB, AudioController audioController)
+    public CMDParser(ArrayList<String> wordsList, DatabaseInterface pathsDB, AudioController audioController, GuiButtons guiButtons)
     {
         this.pathsDB = pathsDB;
         this.wordsList = wordsList;
         this.audioController = audioController;
+        this.guiButtons = guiButtons;
 
         parseCommand();
     }
@@ -122,10 +126,7 @@ public class CMDParser
 
         // play the most matched song, and if there is no match then it doesn't play anything
         if(maxMatchedWords != 0)
-        {
             audioController.playSong(files[biggestMatchIndex].getAbsolutePath());
-
-        }
     }
 
     private void playPlaylistCommand(String path)
@@ -152,6 +153,7 @@ public class CMDParser
                 songs.add(files[i].getAbsolutePath());
         }
 
+        // if there is songs to play then play them
         if(songs.size() > 0)
             audioController.playPlaylist(songs);
     }
@@ -159,18 +161,18 @@ public class CMDParser
     private void pauseCommand()
     {
         if(wordsList.size() == 1)
-            audioController.pauseMusic();
+            guiButtons.onPlayPauseButtonClick(guiButtons.getContext().findViewById(R.id.pausePlayImageView));
     }
 
     private void stopCommand()
     {
         if(wordsList.size() == 1)
-            audioController.stopMusic();
+            guiButtons.onStopButtonClick(guiButtons.getContext().findViewById(R.id.stopImageView));
     }
 
     private void continueCommand()
     {
         if(wordsList.size() == 1)
-            audioController.continueMusic();
+            guiButtons.onPlayPauseButtonClick(guiButtons.getContext().findViewById(R.id.pausePlayImageView));
     }
 }
