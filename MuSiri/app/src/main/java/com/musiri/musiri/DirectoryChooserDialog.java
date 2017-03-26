@@ -28,8 +28,8 @@ public class DirectoryChooserDialog
 
     public interface DirectoryChooserInterface
     {
-        public void onChosenDir(String path);
-        public void onCancelClicked();
+        void onChosenDir(String path);
+        void onCancelClicked();
     }
 
     public DirectoryChooserDialog(Context activityContext, DirectoryChooserInterface directoryChooserInterface)
@@ -88,6 +88,11 @@ public class DirectoryChooserDialog
     {
         File[] files = dir.listFiles();
         int index = 0;
+
+        if(files == null)
+            System.out.println("************* FILES IS NULL ***********");
+        else
+            System.out.println("******************** FILES SIZE IS: " + files.length);
 
         for(int i = 0; i < files.length; i++)
         {

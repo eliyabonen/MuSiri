@@ -1,7 +1,6 @@
 package com.musiri.musiri;
 
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -13,11 +12,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
-import com.google.android.gms.common.api.GoogleApiClient;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -28,7 +22,7 @@ import Parsing.CMDParser;
 public class MainActivity extends AppCompatActivity {
     private DatabaseInterface DB;
     private AudioController audioController;
-    private GuiButtons guiButtons;
+    private AudioControllerProxy audioControllerProxy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,12 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
         initializeDB();
 
-        /* ASK DVIR */
-        audioController = new AudioController(this);
-        guiButtons = new GuiButtons(this, audioController);
-        audioController.setGuiButtons(guiButtons);
-        /* ASK DVIR */
-
+        audioControllerProxy = new AudioControllerProxy(this);
 
         //startService(new Intent(this, AudioController.class));
     }
@@ -57,19 +46,31 @@ public class MainActivity extends AppCompatActivity {
 
     public void onSpeakButtonClick(View view)
     {
-        guiButtons.onSpeakButtonClick(view);
+        /*// set it to the pause icon
+        if(!audioController.isPaused())
+            buttonPlayPause.setImageResource(R.mipmap.pause_icon);*/
+
+        // creating the intent for the google speech api
+        Intent speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Start speaking");
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.ENGLISH);
 
         ArrayList<String> ParsedWordsList = new ArrayList<>();
-        ParsedWordsList.add("play");
-        ParsedWordsList.add("playlist");
-        ParsedWordsList.add("rock");
+        ParsedWordsList.add("hello world");
+        //ParsedWordsList.add("song");
+        //ParsedWordsList.add("to");
+        //ParsedWordsList.add("rock");
         //ParsedWordsList.add("yoU");
 
-        //new CMDParser(ParsedWordsList, DB, audioController, guiButtons);
+        //new CMDParser(ParsedWordsList, DB, audioControllerProxy);
+        this.startActivityForResult(speechRecognizerIntent, 1);
     }
 
-    public void onPlayPauseButtonClick(View view) { guiButtons.onPlayPauseButtonClick(view); }
-    public void onStopButtonClick(View view) { guiButtons.onStopButtonClick(view); }
+    public void onPlayPauseButtonClick(View view) { audioControllerProxy.continuePauseMusic(view); }
+    public void onStopButtonClick(View view) { audioControllerProxy.stopMusic(view); }
 
     private void buildDirectoryChooserDialog() {
         DirectoryChooserDialog chooserDialog = new DirectoryChooserDialog(this,
@@ -115,9 +116,9 @@ public class MainActivity extends AppCompatActivity {
             // converting the string to a list of words
             words = APIWordsList.get(0).split(" ");
             for (int i = 0; i < words.length; i++)
-                ParsedWordsList.add(words[i]);
+                ParsedWordsList.add(words[i].toLowerCase());
 
-            new CMDParser(ParsedWordsList, DB, audioController, guiButtons);
+            new CMDParser(ParsedWordsList, DB, audioControllerProxy);
 
             createNewTextView(APIWordsList.get(0));
         }
@@ -142,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    // creates new text view(the commands) on the screen
     private void createNewTextView(String text)
     {
         final ScrollView scrollView = (ScrollView) findViewById(R.id.textViewsScrollView);

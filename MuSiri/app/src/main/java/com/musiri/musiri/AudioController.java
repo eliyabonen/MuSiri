@@ -18,7 +18,6 @@ public class AudioController extends Service
     private int currPlaylistCounter = 0;
     private ArrayList<String> playlistSongs;
     private Context context;
-    private GuiButtons guiButtons;
     private boolean isPaused = false;
 
     public AudioController(Context context)
@@ -26,11 +25,6 @@ public class AudioController extends Service
         mediaPlayer = new MediaPlayer();
 
         this.context = context;
-    }
-
-    public void setGuiButtons(GuiButtons guiButtons)
-    {
-        this.guiButtons = guiButtons;
     }
 
     public void playSong(final String path)
@@ -51,7 +45,7 @@ public class AudioController extends Service
         }
     }
 
-    public void playPlaylist(final ArrayList<String> songs)
+    public void playPlaylist(final ArrayList<String> songs, AudioControllerProxy.hideButtonsInterface hideButtons)
     {
         // if it's already playing a song then quit
         if(mediaPlayer.isPlaying())
@@ -62,7 +56,7 @@ public class AudioController extends Service
         playlistSongs = songs;
 
         // play the songs
-        mediaPlayer.setOnCompletionListener(new SongCompleted());
+        mediaPlayer.setOnCompletionListener(new SongCompleted(hideButtons));
         playSong(playlistSongs.get(currPlaylistCounter));
     }
 
@@ -92,8 +86,6 @@ public class AudioController extends Service
         mediaPlayer.stop();
         mediaPlayer.reset();
         isPaused = false;
-
-        guiButtons.showMusicButtons(false);
     }
 
     public boolean isPlaying()
@@ -113,14 +105,18 @@ public class AudioController extends Service
         {
             // if it's prepared then start it
             mp.start();
-
-            // display the music buttons
-            guiButtons.showMusicButtons(true);
         }
     }
 
     private class SongCompleted implements MediaPlayer.OnCompletionListener
     {
+        private AudioControllerProxy.hideButtonsInterface hideButtons;
+
+        public SongCompleted(AudioControllerProxy.hideButtonsInterface hideButtons)
+        {
+            this.hideButtons = hideButtons;
+        }
+
         @Override
         public void onCompletion(MediaPlayer mp)
         {
@@ -133,7 +129,7 @@ public class AudioController extends Service
                 mediaPlayer.stop();
                 mediaPlayer.reset();
 
-                guiButtons.showMusicButtons(false);
+                hideButtons.hideMusicButtons();
 
                 return;
             }
