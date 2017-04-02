@@ -90,9 +90,7 @@ public class DirectoryChooserDialog
         int index = 0;
 
         if(files == null)
-            System.out.println("************* FILES IS NULL ***********");
-        else
-            System.out.println("******************** FILES SIZE IS: " + files.length);
+            return;
 
         for(int i = 0; i < files.length; i++)
         {

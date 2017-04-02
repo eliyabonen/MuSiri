@@ -1,44 +1,89 @@
 package Parsing;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.util.Pair;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
-import com.musiri.musiri.AudioControllerProxy;
+import AudioHandling.AudioControllerProxy;
 import com.musiri.musiri.R;
+import com.musiri.musiri.VideoEntry;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Random;
+import java.util.TreeMap;
 
 import DataBase.DatabaseInterface;
 
 public class CMDParser
 {
     private ArrayList<String> wordsList;
-    private DatabaseInterface pathsDB;
+    private DatabaseInterface DB;
     private AudioControllerProxy audioControllerProxy;
 
-    public CMDParser(ArrayList<String> wordsList, DatabaseInterface pathsDB, AudioControllerProxy audioControllerProxy)
+    public CMDParser(ArrayList<String> wordsList, DatabaseInterface DB, AudioControllerProxy audioControllerProxy)
     {
-        this.pathsDB = pathsDB;
+        this.DB = DB;
         this.wordsList = wordsList;
         this.audioControllerProxy = audioControllerProxy;
 
         if(parseCommand() == -1)
             Toast.makeText(audioControllerProxy.getContext(), "There is something wrong", Toast.LENGTH_SHORT).show();
+        else
+            Toast.makeText(audioControllerProxy.getContext(), "Success", Toast.LENGTH_SHORT).show();
     }
 
     private int parseCommand()
     {
         String command = wordsList.get(0);
-        // add gangnam style to pop
+        String music_path = DB.getStringValue(DatabaseInterface.PATHS_DATABASE, "music_path");
+
         if(command.equals("play"))
         {
+            if(audioControllerProxy.isPlaying() || audioControllerProxy.isPaused())
+                return -1;
+
+            // minimum 2 words play commands
+            if(wordsList.size() < 2)
+                return -1;
+
+            if(wordsList.get(1).equals("recent"))
+                return playRecentSongsCommand();
+
+            else if(wordsList.get(1).equals("popular"))
+                return playPopularSongsCommand();
+
+            // minimum 3 words play commands
             if(wordsList.size() < 3)
                 return -1;
 
             if(wordsList.get(1).equals("song"))
-                return playSongCommand(pathsDB.getStringValue("music_path"));
+                return playSongCommand(music_path);
 
             else if(wordsList.get(1).equals("playlist"))
-                return playPlaylistCommand(pathsDB.getStringValue("music_path"));
+                return playPlaylistCommand(music_path);
+
+            else if(wordsList.get(1).equals("random"))
+                return playRandom(music_path);
         }
         else if(command.equals("pause"))
         {
@@ -54,18 +99,347 @@ public class CMDParser
         }
         else if(command.equals("add"))
         {
-            return addSongToPlaylist(pathsDB.getStringValue("music_path"));
+            return addSongToPlaylistCommand(music_path);
         }
+        else if(command.equals("remove"))
+        {
+            return removeSongFromPlaylistCommand(music_path);
+        }
+        else if(command.equals("delete"))
+        {
+            return deleteSongPlaylistCommand(music_path);
+        }
+        else if(command.equals("help"))
+        {
+            return helpCommand();
+        }
+        else if(command.equals("search"))
+        {
+            return searchSongCommand();
+        }
+
         // when there is something wrong with the command
+
+        return 0;
+    }
+
+    private int searchSongCommand()
+    {
+        // main dialog layout
+        LinearLayout rootLinearLayout = new LinearLayout(audioControllerProxy.getContext());
+        rootLinearLayout.setOrientation(LinearLayout.VERTICAL);
+
+        // dialog
+        final Dialog dialog = new Dialog(audioControllerProxy.getContext());
+        dialog.setContentView(rootLinearLayout);
+        dialog.setTitle("Select songs");
+
+        // buttons layout
+        LinearLayout subLinearLayout = new LinearLayout(audioControllerProxy.getContext());
+        subLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+        // the two buttons(Download and Cancel)
+        Button downloadButton = new Button(audioControllerProxy.getContext());
+        Button cancelButton = new Button(audioControllerProxy.getContext());
+
+        // video entries
+        VideoEntry videoEntry = new VideoEntry(audioControllerProxy.getContext(), "https://i.ytimg.com/vi/9bZkp7q19f0/maxresdefault.jpg", "Gangnam style");
+
+        cancelButton.setText("Cancel");
+        downloadButton.setText("Download");
+
+        subLinearLayout.addView(cancelButton);
+        subLinearLayout.addView(downloadButton);
+
+        rootLinearLayout.addView(videoEntry.getLayout());
+        rootLinearLayout.addView(subLinearLayout);
+
+        dialog.show();
+
+        return 0;
+    }
+
+    private int helpCommand()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(audioControllerProxy.getContext());
+
+        builder.setTitle("Help command").setMessage("Hi bro how's a going?\nThis is a new line bro dawg");
+
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+        {
+            public void onClick(DialogInterface dialog, int id)
+            {
+                // User clicked OK button
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        return 0;
+    }
+
+    private int playRecentSongsCommand()
+    {
+        ArrayList<String> songs = new ArrayList<>();
+        String currSong;
+
+        // gets the songs from the database
+        for(int i = 1; i <= DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i++)
+        {
+            currSong = DB.getStringValue(DatabaseInterface.SONGS_DATABASE, "Song" + i);
+
+            // to avoid duplicates
+            if(!songs.contains(currSong))
+                songs.add(currSong);
+        }
+
+        if(songs.size() == 0)
+            return -1;
+
+        for(int i = 0; i < songs.size(); i++)
+            System.out.println("************* " + songs.get(i));
+
+        // play all the song like it is a playlist
+        audioControllerProxy.playPlaylist(songs);
+
+        return 0;
+    }
+
+    private int playPopularSongsCommand()
+    {
+        String currSong, currPopularSong;
+        HashMap<String, Integer> songsCount = new HashMap<>();
+        ArrayList<String> songs = new ArrayList<>();
+        TreeMap<String, Integer> sortedSongs = new TreeMap<String, Integer>(new ValueComparator(songsCount));
+        int tmpValue, currPopularIndex = 0, currPopularCount = 0;
+
+        // gets the songs and their occurences from the database
+        for(int i = 1; i <= DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i++)
+        {
+            currSong = DB.getStringValue(DatabaseInterface.SONGS_DATABASE, "Song" + i);
+
+            // if the songs doesn't exists in the map then initialize it with zero, else add 1 to the counter
+            if(!songsCount.containsKey(currSong))
+                songsCount.put(currSong, 1);
+            else
+            {
+                tmpValue = songsCount.get(currSong);
+                songsCount.remove(currSong);
+                songsCount.put(currSong, tmpValue+1);
+            }
+        }
+
+        if(songsCount.size() == 0)
+            return -1;
+
+        // sorting the map
+        sortedSongs.putAll(songsCount);
+
+        // listing it into an arraylist
+        for (Map.Entry<String, Integer> entry : sortedSongs.entrySet())
+            songs.add(entry.getKey());
+
+        audioControllerProxy.playPlaylist(songs);
+
+        return 0;
+    }
+
+    // a comparator class for the treemap in popular command
+    private class ValueComparator implements Comparator<String>
+    {
+        Map<String, Integer> base;
+
+        public ValueComparator(Map<String, Integer> base)
+        {
+            this.base = base;
+        }
+
+        public int compare(String a, String b)
+        {
+            if (base.get(a) >= base.get(b))
+                return -1;
+            else
+                return 1;
+        }
+    }
+
+    private int playRandom(String music_path)
+    {
+        // get all the files from the music directory
+        Random rand = new Random();
+        File music_dir = new File(music_path);
+        File[] files = music_dir.listFiles();
+
+        if(files.length == 0)
+            return -1;
+
+        if(wordsList.get(2).equals("song"))
+        {
+            int randomNum;
+            ArrayList<File> songs = new ArrayList<>();
+
+            // gets only the songs(mp3 formatted)
+            for(int i = 0; i < files.length; i++)
+            {
+                if(files[i].isFile() && files[i].getName().endsWith(".mp3"))
+                    songs.add(files[i]);
+            }
+
+            if(songs.size() == 0)
+                return -1;
+
+            // playing random song from the songs list
+            randomNum = rand.nextInt(songs.size());
+            audioControllerProxy.playSong(songs.get(randomNum).getAbsolutePath());
+
+            return 0;
+        }
+        else if(wordsList.get(2).equals("playlist"))
+        {
+            int randomNum;
+            ArrayList<File> playlists = new ArrayList<>();
+            ArrayList<String> songs = new ArrayList<>();
+            File randomPlaylist;
+            File[] filesInPlaylist;
+
+            // getting all the playlists(directories) from the main music directory
+            for(int i = 0; i < files.length; i++)
+            {
+                if(files[i].isDirectory())
+                    playlists.add(files[i]);
+            }
+
+            if(playlists.size() == 0)
+                return -1;
+
+            // picking a random playlist
+            randomNum = rand.nextInt(playlists.size());
+            randomPlaylist = playlists.get(randomNum);
+            filesInPlaylist = randomPlaylist.listFiles();
+
+            // getting all the songs from that random playlist
+            for(int i = 0; i < filesInPlaylist.length; i++)
+            {
+                if(filesInPlaylist[i].isFile() && filesInPlaylist[i].getName().endsWith(".mp3"))
+                    songs.add(filesInPlaylist[i].getAbsolutePath());
+            }
+
+            if(songs.size() == 0)
+                return -1;
+
+            // play the songs from the random playlist
+            audioControllerProxy.playPlaylist(songs);
+
+            return 0;
+        }
         else
+            return -1;
+    }
+
+    private int deleteSongPlaylistCommand(String path)
+    {
+        if(wordsList.size() < 3 && !(wordsList.get(1).equals("song") || wordsList.get(1).equals("playlist")))
+            return -1;
+
+        ArrayList<String> fileName = new ArrayList<>();
+        File file;
+        String mostMatchedFilePath;
+
+        // getting the file to delete(song or playlist)
+        for(int i = 2; i < wordsList.size(); i++)
+            fileName.add(wordsList.get(i));
+
+        if(wordsList.get(1).equals("song"))
+        {
+            // searching the most matched song and creating the file object of that song
+            mostMatchedFilePath = getMostMatchedSongPath(new File(path), fileName);
+
+            if(mostMatchedFilePath == null)
+                return -1;
+
+            file = new File(mostMatchedFilePath);
+        }
+        else
+        {
+            // searching the most matched playlist and creating the file object of that directory(playlist)
+            mostMatchedFilePath = getMostMatchedPlaylistPath(new File(path), fileName);
+
+            if(mostMatchedFilePath == null)
+                return -1;
+
+            file = new File(mostMatchedFilePath);
+        }
+
+        // deleting that file and if it's a directory then all it content and itself is deleted
+        if(!deleteRecursive(file))
             return -1;
 
         return 0;
     }
 
-    private int addSongToPlaylist(String path)
+    /* deletes a file or a directory recursively */
+    private boolean deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory.isDirectory())
+            for (File child : fileOrDirectory.listFiles())
+                deleteRecursive(child);
+
+        return fileOrDirectory.delete();
+    }
+
+    private int removeSongFromPlaylistCommand(String path)
     {
-        if(wordsList.size() < 4 || wordsList.contains("to"))
+        if(wordsList.size() < 4 || !wordsList.contains("from"))
+            return -1;
+
+        ArrayList<String> songName = new ArrayList<String>(), playlistName = new ArrayList<String>();
+        String mostMatchedSong, mostMatchedPlaylist;
+        int fromIndex = -1;
+
+        /* gets song and playlist names */
+
+        // get the index to "from" keyword
+        for(int i = wordsList.size()-1; i >= 0; i--)
+        {
+            if (wordsList.get(i).equals("from"))
+                fromIndex = i;
+        }
+
+        // get the names of the song and the playlist
+        for(int i = 1; i < wordsList.size(); i++)
+        {
+            // if it is the "to" index then don't add it to either the song name or playlist name
+            if(i == fromIndex)
+                continue;
+
+            if(i < fromIndex)
+                songName.add(wordsList.get(i));
+            else
+                playlistName.add(wordsList.get(i));
+        }
+
+        // gets the most matched song name and playlist name
+        mostMatchedSong = getMostMatchedSongPath(new File(path), songName);
+
+        if(mostMatchedSong == null)
+            return -1;
+
+        mostMatchedPlaylist = getMostMatchedPlaylistPath(new File(path), playlistName);
+
+        if(mostMatchedPlaylist == null)
+            return -1;
+
+        // deleting the file
+        File file = new File(mostMatchedPlaylist + "/" + (new File(mostMatchedSong).getName()));
+        if(!file.delete())
+            return -1;
+
+        return 0;
+    }
+
+    private int addSongToPlaylistCommand(String path)
+    {
+        if(wordsList.size() < 4 || !wordsList.contains("to"))
             return -1;
 
         ArrayList<String> songName = new ArrayList<String>(), playlistName = new ArrayList<String>();
@@ -82,8 +456,12 @@ public class CMDParser
         }
 
         // get the names of the song and the playlist
-        for(int i = 0; i < wordsList.size(); i++)
+        for(int i = 1; i < wordsList.size(); i++)
         {
+            // if it is the "to" index then don't add it to either the song name or playlist name
+            if(i == toIndex)
+                continue;
+
             if(i < toIndex)
                 songName.add(wordsList.get(i));
             else
@@ -96,14 +474,35 @@ public class CMDParser
         if(mostMatchedSong == null)
             return -1;
 
-        mostMatchedPlaylist = getMostMatchedSongPath(new File(path), playlistName);
+        mostMatchedPlaylist = getMostMatchedPlaylistPath(new File(path), playlistName);
 
         if(mostMatchedPlaylist == null)
             return -1;
 
+        // Copy the source song to the destination playlist
+        File source = new File(mostMatchedSong);
+        File dest = new File(mostMatchedPlaylist + "/" + source.getName());
 
-        /* TODO: add mostMatchedSong to mostMatchedPlaylist */
+        try {
+            FileInputStream in = new FileInputStream(source);
+            FileOutputStream out = new FileOutputStream(dest);
 
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1)
+            {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+
+            out.flush();
+            out.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -131,6 +530,17 @@ public class CMDParser
 
         audioControllerProxy.playSong(mostMatchedSong);
 
+        // adding the song to the songs playlist
+        DB.saveIntPreference(DatabaseInterface.SONGS_DATABASE, "songsCount", DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount")+1);
+        DB.saveStringPreference(DatabaseInterface.SONGS_DATABASE, "Song" + DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"), mostMatchedSong);
+
+        // after 500 songs it resets itself
+        if(DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount") > 500)
+        {
+            DB.clearPreference(DatabaseInterface.SONGS_DATABASE);
+            DB.saveIntPreference("recentSongs", "songsCount", 0);
+        }
+
         return 0;
     }
 
@@ -150,7 +560,7 @@ public class CMDParser
             matchedWords = 0;
 
             // checks if the file is mp3 formatted
-            if(".mp3".equals(files[i].getName().substring(files[i].getName().length() - 4)))
+            if(files[i].isFile() && files[i].getName().endsWith(".mp3"))
             {
                 // parsing the file name to array of words
                 String[] fileNameWordsArray = files[i].getName().split(" ");

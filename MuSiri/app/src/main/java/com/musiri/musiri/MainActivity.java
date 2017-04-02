@@ -2,6 +2,7 @@ package com.musiri.musiri;
 
 import android.content.Intent;
 import android.os.Environment;
+import android.provider.ContactsContract;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
@@ -16,6 +17,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import AudioHandling.AudioController;
+import AudioHandling.AudioControllerProxy;
 import DataBase.DatabaseInterface;
 import Parsing.CMDParser;
 
@@ -36,12 +39,18 @@ public class MainActivity extends AppCompatActivity {
         //startService(new Intent(this, AudioController.class));
     }
 
-    private void initializeDB() {
-        DB = new DatabaseInterface("paths", this);
-        DB.savePreference("default_path", Environment.getExternalStorageDirectory().getAbsolutePath());
+    private void initializeDB()
+    {
+        // initializing the default music path database
+        DB = new DatabaseInterface(this);
+        DB.saveStringPreference(DatabaseInterface.PATHS_DATABASE, "default_path", Environment.getExternalStorageDirectory().getAbsolutePath());
 
-        if (DB.getStringValue("music_path").equals("null"))
+        if (DB.getStringValue(DatabaseInterface.PATHS_DATABASE, "music_path").equals("null"))
             buildDirectoryChooserDialog();
+
+        // initializing the recent played songs database
+        if(DB.getIntValue("recentSongs", "songsCount") == 0)
+            DB.saveIntPreference("recentSongs", "songsCount", 0);
     }
 
     public void onSpeakButtonClick(View view)
@@ -59,13 +68,12 @@ public class MainActivity extends AppCompatActivity {
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.ENGLISH);
 
         ArrayList<String> ParsedWordsList = new ArrayList<>();
-        ParsedWordsList.add("hello world");
-        //ParsedWordsList.add("song");
-        //ParsedWordsList.add("to");
-        //ParsedWordsList.add("rock");
-        //ParsedWordsList.add("yoU");
+        ParsedWordsList.add("search");
+        ParsedWordsList.add("gangnam");
+        ParsedWordsList.add("style");
 
         //new CMDParser(ParsedWordsList, DB, audioControllerProxy);
+
         this.startActivityForResult(speechRecognizerIntent, 1);
     }
 
@@ -77,23 +85,23 @@ public class MainActivity extends AppCompatActivity {
                 new DirectoryChooserDialog.DirectoryChooserInterface() {
                     @Override
                     public void onChosenDir(String path) {
-                        DB.savePreference("music_path", path);
+                        DB.saveStringPreference(DatabaseInterface.PATHS_DATABASE, "music_path", path);
                     }
 
                     @Override
                     public void onCancelClicked() {
                         // if already exists path for the music folder then exit
-                        if (!DB.getStringValue("music_path").equals("null"))
+                        if (!DB.getStringValue(DatabaseInterface.PATHS_DATABASE, "music_path").equals("null"))
                             return;
 
                         // if not exists it creates new Music folder
-                        File folder = new File((DB.getStringValue("default_path")) + "/MuSiriMusic");
+                        File folder = new File((DB.getStringValue(DatabaseInterface.PATHS_DATABASE, "default_path")) + "/MuSiriMusic");
 
                         if (!folder.exists())
                             folder.mkdirs();
 
                         // set it as the music_path
-                        DB.savePreference("music_path", folder.getAbsolutePath());
+                        DB.saveStringPreference(DatabaseInterface.PATHS_DATABASE, "music_path", folder.getAbsolutePath());
                     }
                 });
 

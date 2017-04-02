@@ -5,23 +5,38 @@ import android.content.SharedPreferences;
 
 public class DatabaseInterface
 {
-    private SharedPreferences sharedPref;
+    public static String SONGS_DATABASE = "recentSongs";
+    public static String PATHS_DATABASE = "paths";
 
-    public DatabaseInterface(String fileName, Context context)
+    private Context context;
+
+    public DatabaseInterface(Context context)
     {
-        sharedPref = context.getSharedPreferences(fileName, Context.MODE_PRIVATE);
+        this.context = context;
     }
 
-    public void savePreference(String key, String value)
+    public void saveStringPreference(String fileName, String key, String value)
     {
-        SharedPreferences.Editor editor = sharedPref.edit();
-
-        editor.putString(key, value);
-        editor.apply();
+        context.getSharedPreferences(fileName, Context.MODE_PRIVATE).edit().putString(key, value).apply();
     }
 
-    public String getStringValue(String key)
+    public void saveIntPreference(String fileName, String key, int value)
     {
-        return (sharedPref.getString(key, "null"));
+        context.getSharedPreferences(fileName, Context.MODE_PRIVATE).edit().putInt(key, value).apply();
+    }
+
+    public String getStringValue(String fileName, String key)
+    {
+        return context.getSharedPreferences(fileName, Context.MODE_PRIVATE).getString(key, "null");
+    }
+
+    public int getIntValue(String fileName, String key)
+    {
+        return context.getSharedPreferences(fileName, Context.MODE_PRIVATE).getInt(key, 0);
+    }
+
+    public void clearPreference(String fileName)
+    {
+        context.getSharedPreferences(fileName, Context.MODE_PRIVATE).edit().clear().apply();
     }
 }

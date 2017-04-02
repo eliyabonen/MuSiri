@@ -1,16 +1,12 @@
-package com.musiri.musiri;
+package AudioHandling;
 
-import android.content.Context;
-import android.content.Intent;
-import android.provider.ContactsContract;
-import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
+
+import com.musiri.musiri.R;
 
 import java.util.ArrayList;
-import java.util.Locale;
 
 public class AudioControllerProxy
 {
@@ -82,6 +78,16 @@ public class AudioControllerProxy
             }
         });
         showMusicButtons(true);
+    }
+
+    public boolean isPlaying()
+    {
+        return audioController.isPlaying();
+    }
+
+    public boolean isPaused()
+    {
+        return audioController.isPaused();
     }
 
     public AppCompatActivity getContext()
