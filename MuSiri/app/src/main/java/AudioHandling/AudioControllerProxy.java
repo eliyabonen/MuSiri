@@ -43,6 +43,10 @@ public class AudioControllerProxy
     // when the user clicked the Play/Pause button
     public void continuePauseMusic(View view)
     {
+        // if it's not disappearing then why checking
+        if(view.getVisibility() == View.GONE)
+            return;
+
         if(audioController.isPlaying())
         {
             ((ImageView)view).setImageResource(R.mipmap.play_icon);

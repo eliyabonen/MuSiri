@@ -1,5 +1,6 @@
 package com.musiri.musiri;
 
+import android.content.ClipData;
 import android.content.Intent;
 import android.os.Environment;
 import android.provider.ContactsContract;
@@ -9,6 +10,7 @@ import android.speech.RecognizerIntent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -22,9 +24,9 @@ import AudioHandling.AudioControllerProxy;
 import DataBase.DatabaseInterface;
 import Parsing.CMDParser;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+{
     private DatabaseInterface DB;
-    private AudioController audioController;
     private AudioControllerProxy audioControllerProxy;
 
     @Override
@@ -69,16 +71,40 @@ public class MainActivity extends AppCompatActivity {
 
         ArrayList<String> ParsedWordsList = new ArrayList<>();
         ParsedWordsList.add("search");
-        ParsedWordsList.add("gangnam");
-        ParsedWordsList.add("style");
+        ParsedWordsList.add("logan");
+        ParsedWordsList.add("paul");
 
-        //new CMDParser(ParsedWordsList, DB, audioControllerProxy);
+        new CMDParser(ParsedWordsList, DB, audioControllerProxy);
 
-        this.startActivityForResult(speechRecognizerIntent, 1);
+        //this.startActivityForResult(speechRecognizerIntent, 1);
     }
 
     public void onPlayPauseButtonClick(View view) { audioControllerProxy.continuePauseMusic(view); }
     public void onStopButtonClick(View view) { audioControllerProxy.stopMusic(view); }
+
+    public void onSendTextClick(View view)
+    {
+        ArrayList<String> ParsedWordsList = new ArrayList<>();
+        String text = ((EditText) findViewById(R.id.editTextCommands)).getText().toString();
+        String[] words;
+
+        if(text.length() == 0)
+            return;
+
+        // cleaning the text input area
+        ((EditText) findViewById(R.id.editTextCommands)).setText("");
+
+        // converting the string to a list of words
+        words = text.split(" ");
+        for (int i = 0; i < words.length; i++)
+            ParsedWordsList.add(words[i].toLowerCase());
+
+        // executing the new command
+        new CMDParser(ParsedWordsList, DB, audioControllerProxy);
+
+        // creating a new text view on the screen
+        createNewTextView(text);
+    }
 
     private void buildDirectoryChooserDialog() {
         DirectoryChooserDialog chooserDialog = new DirectoryChooserDialog(this,
@@ -109,11 +135,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    public void onActivityResult(int requestCode, int resultCode, Intent intent)
+    {
         if (intent == null)
             return;
 
-        if (requestCode == 1) {
+        if (requestCode == 1)
+        {
             ArrayList<String> APIWordsList;
             ArrayList<String> ParsedWordsList = new ArrayList<>();
             String[] words;
@@ -133,17 +161,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
         int id = item.getItemId();
 
-        if (id == R.id.action_change_music_folder) {
+        if (id == R.id.action_change_music_folder)
+        {
             buildDirectoryChooserDialog();
             return true;
         }

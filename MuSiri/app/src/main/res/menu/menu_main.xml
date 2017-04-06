@@ -7,5 +7,4 @@
         android:title="@string/change_music_folder"
         android:orderInCategory="100"
         app:showAsAction="never" />
-
 </menu>

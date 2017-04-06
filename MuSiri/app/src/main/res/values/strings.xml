@@ -1,4 +1,27 @@
 <resources>
     <string name="app_name">MuSiri</string>
     <string name="change_music_folder">Change Music Folder</string>
+    <string name="help_command">
+        Songs:\n
+        play song "song_name"\n
+        play recent\n
+        play popular\n
+        play random song\n
+        delete song "song_name"\n
+        search song_name\n
+\n
+        Playlists:\n
+        play playlist "playlist_name"\n
+        delete playlist "playlist_name"\n
+        play random playlist\n
+\n
+        Control:\n
+        stop\n
+        pause\n
+        continue\n
+\n
+        Other:\n
+        add "song_name" to "playlist_name"\n
+        remove "song_name" from "playlist_name"\n
+    </string>
 </resources>

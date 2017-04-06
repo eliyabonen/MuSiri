@@ -9,6 +9,7 @@ import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.w3c.dom.Text;
 
@@ -90,7 +91,10 @@ public class DirectoryChooserDialog
         int index = 0;
 
         if(files == null)
+        {
+            Toast.makeText(_activityContext, "FILES IS NULL", Toast.LENGTH_LONG).show();
             return;
+        }
 
         for(int i = 0; i < files.length; i++)
         {

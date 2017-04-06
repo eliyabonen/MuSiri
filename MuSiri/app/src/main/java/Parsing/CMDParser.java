@@ -2,10 +2,15 @@ package Parsing;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.util.Pair;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -31,11 +36,19 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import DataBase.DatabaseInterface;
+import Network.HTTPRequests;
+import Network.SongDownloader;
 
 public class CMDParser
 {
+    public static final int MAX_RESULTS = 5;
+
     private ArrayList<String> wordsList;
     private DatabaseInterface DB;
     private AudioControllerProxy audioControllerProxy;
@@ -120,60 +133,162 @@ public class CMDParser
 
         // when there is something wrong with the command
 
-        return 0;
+        return -1;
     }
 
     private int searchSongCommand()
     {
+        if(wordsList.size() < 2)
+            return -1;
+
+        if(isNetworkAvailable() == false)
+            return -1;
+
+        String searchedSong = new String();
+        HTTPRequests httpRequests = new HTTPRequests();
         // main dialog layout
         LinearLayout rootLinearLayout = new LinearLayout(audioControllerProxy.getContext());
+        Dialog dialog;
+        TextView textView;
+
+        // root layout configuration
         rootLinearLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLinearLayout.setMinimumHeight(300);
+        rootLinearLayout.setMinimumWidth(300);
+
+        // the textview that displays to the user that it's loading his request
+        textView = new TextView(audioControllerProxy.getContext());
+        textView.setText("Loading...");
+        rootLinearLayout.addView(textView);
 
         // dialog
-        final Dialog dialog = new Dialog(audioControllerProxy.getContext());
+        dialog = new Dialog(audioControllerProxy.getContext());
         dialog.setContentView(rootLinearLayout);
         dialog.setTitle("Select songs");
 
-        // buttons layout
-        LinearLayout subLinearLayout = new LinearLayout(audioControllerProxy.getContext());
-        subLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
-
-        // the two buttons(Download and Cancel)
-        Button downloadButton = new Button(audioControllerProxy.getContext());
-        Button cancelButton = new Button(audioControllerProxy.getContext());
-
-        // video entries
-        VideoEntry videoEntry = new VideoEntry(audioControllerProxy.getContext(), "https://i.ytimg.com/vi/9bZkp7q19f0/maxresdefault.jpg", "Gangnam style");
-
-        cancelButton.setText("Cancel");
-        downloadButton.setText("Download");
-
-        subLinearLayout.addView(cancelButton);
-        subLinearLayout.addView(downloadButton);
-
-        rootLinearLayout.addView(videoEntry.getLayout());
-        rootLinearLayout.addView(subLinearLayout);
-
         dialog.show();
 
+        // getting the name of the searched song
+        for(int i = 1; i < wordsList.size(); i++)
+        {
+            searchedSong += wordsList.get(i);
+
+            if(i != wordsList.size()-1)
+                searchedSong += "%20";
+        }
+
+        // sending a get request to the API(it is inside a new thread)
+        try {
+            httpRequests.sendGet("https://www.googleapis.com/youtube/v3/search?q=" + searchedSong + "&key=AIzaSyD8-00C9TCYwe95ID1yJvDOSsBh8mCUC1c&part=snippet&type=video&maxResults=" + MAX_RESULTS, new searchDialogUpdater(dialog));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+
         return 0;
+    }
+
+    private class searchDialogUpdater implements HTTPRequests.updateGUIInterface
+    {
+        private Dialog dialog;
+
+        public searchDialogUpdater(Dialog dialog)
+        {
+            this.dialog = dialog;
+        }
+
+        @Override
+        public void updateGUI(final String jsonResponse, final ArrayList<Bitmap> thumbnails)
+        {
+            audioControllerProxy.getContext().runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    // if there is something wrong then let the user know and quit the search dialog
+                    if(jsonResponse == null)
+                    {
+                        dialog.cancel();
+                        Toast.makeText(audioControllerProxy.getContext(), "There is something wrong", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    LinearLayout rootLinearLayout = new LinearLayout(audioControllerProxy.getContext());
+                    JSONParser jsonParser = new JSONParser(jsonResponse);
+                    ArrayList<VideoEntry> videoEntries = new ArrayList<>();
+
+                    rootLinearLayout.setOrientation(LinearLayout.VERTICAL);
+
+                    // video entries
+                    for(int i = 0; i < MAX_RESULTS; i++)
+                        videoEntries.add(new VideoEntry(audioControllerProxy.getContext(), jsonParser.getFieldValue("title", i), thumbnails.get(i), jsonParser.getFieldValue("videoId", i)));
+
+                    // buttons relative layout
+                    RelativeLayout relativeLayout = new RelativeLayout(audioControllerProxy.getContext());
+
+                    // the two buttons(Download and Cancel)
+                    Button downloadButton = new Button(audioControllerProxy.getContext());
+                    downloadButton.setText("Download");
+
+                    RelativeLayout.LayoutParams downloadBtnLayoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                    downloadBtnLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                    downloadButton.setLayoutParams(downloadBtnLayoutParams);
+
+                    downloadButton.setOnClickListener(new SongDownloader(videoEntries, DB));
+
+                    Button cancelButton = new Button(audioControllerProxy.getContext());
+                    cancelButton.setText("Cancel");
+
+                    RelativeLayout.LayoutParams cancelBtnLayoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                    cancelBtnLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                    cancelButton.setLayoutParams(cancelBtnLayoutParams);
+
+                    cancelButton.setOnClickListener(new View.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(View v)
+                        {
+                            dialog.cancel();
+                        }
+                    });
+
+                    relativeLayout.addView(cancelButton);
+                    relativeLayout.addView(downloadButton);
+
+                    for(int i = 0; i < videoEntries.size(); i++)
+                        rootLinearLayout.addView(videoEntries.get(i).getLayout());
+
+                    rootLinearLayout.addView(relativeLayout);
+
+                    dialog.setContentView(rootLinearLayout);
+                }
+            });
+        }
+    }
+
+    private boolean isNetworkAvailable()
+    {
+        ConnectivityManager connectivityManager = (ConnectivityManager) audioControllerProxy.getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return (activeNetworkInfo != null && activeNetworkInfo.isConnected());
     }
 
     private int helpCommand()
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(audioControllerProxy.getContext());
+        AlertDialog dialog;
 
-        builder.setTitle("Help command").setMessage("Hi bro how's a going?\nThis is a new line bro dawg");
+        builder.setTitle("Help command").setMessage(R.string.help_command);
 
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
         {
             public void onClick(DialogInterface dialog, int id)
             {
-                // User clicked OK button
+                dialog.cancel();
             }
         });
 
-        AlertDialog dialog = builder.create();
+        dialog = builder.create();
+
         dialog.show();
 
         return 0;
@@ -185,7 +300,7 @@ public class CMDParser
         String currSong;
 
         // gets the songs from the database
-        for(int i = 1; i <= DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i++)
+        for(int i = DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i >= 1; i--)
         {
             currSong = DB.getStringValue(DatabaseInterface.SONGS_DATABASE, "Song" + i);
 
@@ -699,6 +814,9 @@ public class CMDParser
         if(wordsList.size() != 1)
             return -1;
 
+        if(audioControllerProxy.isPaused())
+            return -1;
+
         audioControllerProxy.continuePauseMusic(audioControllerProxy.getContext().findViewById(R.id.pausePlayImageView));
 
         return 0;
@@ -717,6 +835,9 @@ public class CMDParser
     private int continueCommand()
     {
         if(wordsList.size() != 1)
+            return -1;
+
+        if(audioControllerProxy.isPlaying())
             return -1;
 
         audioControllerProxy.continuePauseMusic(audioControllerProxy.getContext().findViewById(R.id.pausePlayImageView));

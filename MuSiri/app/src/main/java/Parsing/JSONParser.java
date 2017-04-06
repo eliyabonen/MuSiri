@@ -2,7 +2,26 @@ package Parsing;
 
 public class JSONParser
 {
-    public static String getFieldValue(String jsonString, String field)
+    private String jsonString;
+
+    public JSONParser()
+    {
+
+    }
+
+    public JSONParser(String jsonString)
+    {
+        this.jsonString = jsonString;
+    }
+
+    public void setJSONString(String jsonString)
+    {
+        this.jsonString = jsonString;
+    }
+
+    /* TODO: change the method so it will give the index field and not only the first every time */
+
+    public String getFieldValue(String field, int index)
     {
         String value = "";
         String fixedField = "\"" + field + "\""; // making sure it is the field and not some value(adding "", example: "title")
@@ -18,8 +37,15 @@ public class JSONParser
 
             if(count == fixedField.length())
             {
-                pos = i+2; // plus two because i don't want the ending quotes
-                break;
+                count = 0;
+
+                if(index == 0)
+                {
+                    pos = i+2; // plus two because i don't want the ending quotes
+                    break;
+                }
+
+                index--;
             }
         }
 
@@ -49,7 +75,7 @@ public class JSONParser
         return value;
     }
 
-    public static boolean isFieldExists(String jsonString, String field)
+    public boolean isFieldExists(String field)
     {
         String fixedField = "\"" + field + "\""; // making sure it is the field and not some value(adding "", example: "title")
         int count = 0;
