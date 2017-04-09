@@ -4,23 +4,19 @@ import android.Manifest;
 import android.content.Intent;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
-
 import audio_handling.AudioController;
 import audio_handling.AudioControllerProxy;
 import DataBase.Database;
@@ -62,10 +58,6 @@ public class MainActivity extends AppCompatActivity
 
     public void onSpeakButtonClick(View view)
     {
-        /*// set it to the pause icon
-        if(!audioController.isPaused())
-            buttonPlayPause.setImageResource(R.mipmap.pause_icon);*/
-
         // creating the intent for the google speech api
         Intent speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 
@@ -75,9 +67,9 @@ public class MainActivity extends AppCompatActivity
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.ENGLISH);
 
         ArrayList<String> ParsedWordsList = new ArrayList<>();
-        ParsedWordsList.add("search");
-        ParsedWordsList.add("party");
-        ParsedWordsList.add("rock");
+        ParsedWordsList.add("create");
+        ParsedWordsList.add("playlist");
+        ParsedWordsList.add("hello");
 
         //new CMDParser(ParsedWordsList, DB, audioControllerProxy);
 

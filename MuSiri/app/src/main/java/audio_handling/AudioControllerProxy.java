@@ -3,9 +3,7 @@ package audio_handling;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ImageView;
-
 import com.musiri.musiri.R;
-
 import java.util.ArrayList;
 
 public class AudioControllerProxy

@@ -12,6 +12,7 @@
         search song_name\n
 \n
         Playlists:\n
+        create playlist playlist_name\n
         play playlist "playlist_name"\n
         delete playlist "playlist_name"\n
         play random playlist\n

@@ -9,7 +9,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -17,7 +16,6 @@ import android.widget.Toast;
 import audio_handling.AudioControllerProxy;
 import com.musiri.musiri.R;
 import com.musiri.musiri.VideoEntry;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -29,7 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
-
 import DataBase.Database;
 import Network.HTTPRequests;
 import Network.SongDownloader;
@@ -111,6 +108,10 @@ public class CMDParser
         {
             return deleteSongPlaylistCommand(music_path);
         }
+        else if(command.equals("create"))
+        {
+            return createPlaylist();
+        }
         else if(command.equals("help"))
         {
             return helpCommand();
@@ -123,6 +124,36 @@ public class CMDParser
         // when there is something wrong with the command
 
         return -1;
+    }
+
+    private int createPlaylist()
+    {
+        if(wordsList.size() < 3)
+            return -1;
+        if(!wordsList.get(1).equals("playlist"))
+            return -1;
+
+        String playlistName = new String();
+
+        for(int i = 2; i < wordsList.size(); i++)
+            playlistName += wordsList.get(i);
+
+        // if not exists it creates new Music folder
+        File folder = new File((DB.getStringValue(Database.PATHS_DATABASE, "music_path")) + "/" + playlistName);
+
+        if (folder.exists())
+        {
+            System.out.println("********************************here0");
+            return -1;
+        }
+
+        if(!folder.mkdirs())
+        {
+            System.out.println("********************************here1");
+            return -1;
+        }
+
+        return 0;
     }
 
     private int searchSongCommand()
@@ -447,7 +478,10 @@ public class CMDParser
 
     private int deleteSongPlaylistCommand(String path)
     {
-        if(wordsList.size() < 3 && !(wordsList.get(1).equals("song") || wordsList.get(1).equals("playlist")))
+        if(wordsList.size() < 3)
+            return -1;
+
+        if(!(wordsList.get(1).equals("song") || wordsList.get(1).equals("playlist")))
             return -1;
 
         ArrayList<String> fileName = new ArrayList<>();
@@ -497,7 +531,9 @@ public class CMDParser
 
     private int removeSongFromPlaylistCommand(String path)
     {
-        if(wordsList.size() < 4 || !wordsList.contains("from"))
+        if(wordsList.size() < 4)
+            return -1;
+        if(!wordsList.contains("from"))
             return -1;
 
         ArrayList<String> songName = new ArrayList<String>(), playlistName = new ArrayList<String>();
@@ -547,7 +583,9 @@ public class CMDParser
 
     private int addSongToPlaylistCommand(String path)
     {
-        if(wordsList.size() < 4 || !wordsList.contains("to"))
+        if(wordsList.size() < 4)
+            return -1;
+        if(!wordsList.contains("to"))
             return -1;
 
         ArrayList<String> songName = new ArrayList<String>(), playlistName = new ArrayList<String>();

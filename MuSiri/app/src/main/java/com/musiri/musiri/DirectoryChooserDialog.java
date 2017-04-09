@@ -10,12 +10,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.w3c.dom.Text;
-
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DirectoryChooserDialog
 {
