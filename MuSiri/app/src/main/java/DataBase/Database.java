@@ -3,14 +3,14 @@ package DataBase;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-public class DatabaseInterface
+public class Database
 {
     public static String SONGS_DATABASE = "recentSongs";
     public static String PATHS_DATABASE = "paths";
 
     private Context context;
 
-    public DatabaseInterface(Context context)
+    public Database(Context context)
     {
         this.context = context;
     }

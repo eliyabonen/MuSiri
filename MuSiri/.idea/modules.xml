@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/MuSiri.iml" filepath="$PROJECT_DIR$/MuSiri.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ytsdk_4_3_S/ytsdk_4_3_S.iml" filepath="$PROJECT_DIR$/ytsdk_4_3_S/ytsdk_4_3_S.iml" />
     </modules>
   </component>
 </project>

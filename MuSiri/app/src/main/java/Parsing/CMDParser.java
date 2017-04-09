@@ -7,17 +7,14 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.provider.ContactsContract;
-import android.support.annotation.NonNull;
-import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import AudioHandling.AudioControllerProxy;
+import audio_handling.AudioControllerProxy;
 import com.musiri.musiri.R;
 import com.musiri.musiri.VideoEntry;
 
@@ -27,21 +24,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import DataBase.DatabaseInterface;
+import DataBase.Database;
 import Network.HTTPRequests;
 import Network.SongDownloader;
 
@@ -50,10 +39,10 @@ public class CMDParser
     public static final int MAX_RESULTS = 5;
 
     private ArrayList<String> wordsList;
-    private DatabaseInterface DB;
+    private Database DB;
     private AudioControllerProxy audioControllerProxy;
 
-    public CMDParser(ArrayList<String> wordsList, DatabaseInterface DB, AudioControllerProxy audioControllerProxy)
+    public CMDParser(ArrayList<String> wordsList, Database DB, AudioControllerProxy audioControllerProxy)
     {
         this.DB = DB;
         this.wordsList = wordsList;
@@ -68,7 +57,7 @@ public class CMDParser
     private int parseCommand()
     {
         String command = wordsList.get(0);
-        String music_path = DB.getStringValue(DatabaseInterface.PATHS_DATABASE, "music_path");
+        String music_path = DB.getStringValue(Database.PATHS_DATABASE, "music_path");
 
         if(command.equals("play"))
         {
@@ -214,7 +203,7 @@ public class CMDParser
 
                     LinearLayout rootLinearLayout = new LinearLayout(audioControllerProxy.getContext());
                     JSONParser jsonParser = new JSONParser(jsonResponse);
-                    ArrayList<VideoEntry> videoEntries = new ArrayList<>();
+                    final ArrayList<VideoEntry> videoEntries = new ArrayList<>();
 
                     rootLinearLayout.setOrientation(LinearLayout.VERTICAL);
 
@@ -233,7 +222,7 @@ public class CMDParser
                     downloadBtnLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
                     downloadButton.setLayoutParams(downloadBtnLayoutParams);
 
-                    downloadButton.setOnClickListener(new SongDownloader(videoEntries, DB));
+                    downloadButton.setOnClickListener(new SongDownloader(videoEntries, DB, dialog));
 
                     Button cancelButton = new Button(audioControllerProxy.getContext());
                     cancelButton.setText("Cancel");
@@ -254,8 +243,12 @@ public class CMDParser
                     relativeLayout.addView(cancelButton);
                     relativeLayout.addView(downloadButton);
 
+                    // adding all the video entries and adding the them checked listener to disable all the others when one is checked
                     for(int i = 0; i < videoEntries.size(); i++)
+                    {
+                        videoEntries.get(i).setCheckBoxOnCheckedChangeListener(i, videoEntries);
                         rootLinearLayout.addView(videoEntries.get(i).getLayout());
+                    }
 
                     rootLinearLayout.addView(relativeLayout);
 
@@ -300,9 +293,9 @@ public class CMDParser
         String currSong;
 
         // gets the songs from the database
-        for(int i = DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i >= 1; i--)
+        for(int i = DB.getIntValue(Database.SONGS_DATABASE, "songsCount"); i >= 1; i--)
         {
-            currSong = DB.getStringValue(DatabaseInterface.SONGS_DATABASE, "Song" + i);
+            currSong = DB.getStringValue(Database.SONGS_DATABASE, "Song" + i);
 
             // to avoid duplicates
             if(!songs.contains(currSong))
@@ -330,9 +323,9 @@ public class CMDParser
         int tmpValue, currPopularIndex = 0, currPopularCount = 0;
 
         // gets the songs and their occurences from the database
-        for(int i = 1; i <= DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"); i++)
+        for(int i = 1; i <= DB.getIntValue(Database.SONGS_DATABASE, "songsCount"); i++)
         {
-            currSong = DB.getStringValue(DatabaseInterface.SONGS_DATABASE, "Song" + i);
+            currSong = DB.getStringValue(Database.SONGS_DATABASE, "Song" + i);
 
             // if the songs doesn't exists in the map then initialize it with zero, else add 1 to the counter
             if(!songsCount.containsKey(currSong))
@@ -643,18 +636,19 @@ public class CMDParser
         if(mostMatchedSong == null)
             return -1;
 
-        audioControllerProxy.playSong(mostMatchedSong);
-
         // adding the song to the songs playlist
-        DB.saveIntPreference(DatabaseInterface.SONGS_DATABASE, "songsCount", DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount")+1);
-        DB.saveStringPreference(DatabaseInterface.SONGS_DATABASE, "Song" + DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount"), mostMatchedSong);
+        DB.saveIntPreference(Database.SONGS_DATABASE, "songsCount", DB.getIntValue(Database.SONGS_DATABASE, "songsCount")+1);
+        DB.saveStringPreference(Database.SONGS_DATABASE, "Song" + DB.getIntValue(Database.SONGS_DATABASE, "songsCount"), mostMatchedSong);
 
         // after 500 songs it resets itself
-        if(DB.getIntValue(DatabaseInterface.SONGS_DATABASE, "songsCount") > 500)
+        if(DB.getIntValue(Database.SONGS_DATABASE, "songsCount") > 500)
         {
-            DB.clearPreference(DatabaseInterface.SONGS_DATABASE);
+            DB.clearPreference(Database.SONGS_DATABASE);
             DB.saveIntPreference("recentSongs", "songsCount", 0);
         }
+
+        // playing the song
+        audioControllerProxy.playSong(mostMatchedSong);
 
         return 0;
     }
@@ -690,7 +684,7 @@ public class CMDParser
                         for(int k = 0; k < fileNameWordsArray.length; k++)
                         {
                             // checks if the file name word contains a word from the user, the word from the user must be greater than one char for preventing checking issues
-                            if(fileNameWordsArray[k].toLowerCase().contains(songName.get(j)) && (songName.get(j).length() > 1))
+                            if(fileNameWordsArray[k].toLowerCase().equals(songName.get(j)) && (songName.get(j).length() > 1))
                             {
                                 matchedWords++;
                             }
@@ -743,7 +737,7 @@ public class CMDParser
                         for(int k = 0; k < fileNameWordsArray.length; k++)
                         {
                             // checks if the file name word contains a word from the user, the word from the user must be greater than one char for preventing checking issues
-                            if(fileNameWordsArray[k].toLowerCase().contains(playlistName.get(j)) && (playlistName.get(j).length() > 1))
+                            if(fileNameWordsArray[k].toLowerCase().equals(playlistName.get(j)) && (playlistName.get(j).length() > 1))
                             {
                                 matchedWords++;
                             }

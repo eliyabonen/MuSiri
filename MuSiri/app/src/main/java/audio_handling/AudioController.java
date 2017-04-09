@@ -1,5 +1,6 @@
-package AudioHandling;
+package audio_handling;
 
+import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +9,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,14 +22,23 @@ public class AudioController extends Service
     private Context context;
     private boolean isPaused = false;
 
+    private Object[] mSetForegroundArgs = new Object[1];
+    private Object[] mStartForegroundArgs = new Object[2];
+
+    public AudioController()
+    {
+
+    }
+
     public AudioController(Context context)
     {
         mediaPlayer = new MediaPlayer();
 
+        this.playlistSongs = null;
         this.context = context;
     }
 
-    public void playSong(final String path)
+    public void playSong(final String path, AudioControllerProxy.hideButtonsInterface hideButtons)
     {
         // if it's already playing a song or if it's paused then don't play the song
         if(mediaPlayer.isPlaying() || isPaused)
@@ -40,6 +51,7 @@ public class AudioController extends Service
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setOnPreparedListener(new SongPrepared());
             mediaPlayer.prepareAsync();
+            mediaPlayer.setOnCompletionListener(new SongCompleted(hideButtons));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -56,8 +68,7 @@ public class AudioController extends Service
         playlistSongs = songs;
 
         // play the songs
-        mediaPlayer.setOnCompletionListener(new SongCompleted(hideButtons));
-        playSong(playlistSongs.get(currPlaylistCounter));
+        playSong(playlistSongs.get(currPlaylistCounter), hideButtons);
     }
 
     public void pauseMusic()
@@ -120,6 +131,19 @@ public class AudioController extends Service
         @Override
         public void onCompletion(MediaPlayer mp)
         {
+            /* IF IT IS A SINGLE SONG COMPLETION */
+            if(playlistSongs == null)
+            {
+                hideButtons.hideMusicButtons();
+
+                mp.stop();
+                mp.reset();
+
+                return;
+            }
+
+            /* IF IT IS A PLAYLIST SONG COMPLETION */
+
             // increasing the playlist song counter
             currPlaylistCounter++;
 
@@ -130,15 +154,15 @@ public class AudioController extends Service
                 mediaPlayer.reset();
 
                 hideButtons.hideMusicButtons();
+                playlistSongs = null;
 
                 return;
             }
 
             // playing the next song by reseting the mediaplayer and playing the next song in the list
             mediaPlayer.reset();
-            mediaPlayer.setOnCompletionListener(this);
 
-            playSong(playlistSongs.get(currPlaylistCounter));
+            playSong(playlistSongs.get(currPlaylistCounter), hideButtons);
         }
     }
 
@@ -146,16 +170,20 @@ public class AudioController extends Service
     public void onCreate()
     {
         super.onCreate();
+        System.out.println("service created");
 
-        MediaPlayer player = MediaPlayer.create(this, Uri.parse("/storage/emulated/0/MuSiriMusic/Cinema.mp3"));
-        player.start();
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this)
+                        .setContentTitle("My notification")
+                        .setContentText("Hello World!");
+        this.startForeground(1, mBuilder.build());
     }
 
     @Override
-    public void onDestroy() {
-        System.out.println("********DESTROYYYYYYYYYYYYYYYYYY");
-        //player.stop();
-        // player.release();
+    public void onDestroy()
+    {
+        System.out.println("service destroyed");
+        this.stopForeground(true);
     }
 
     @Nullable

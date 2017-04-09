@@ -3,6 +3,7 @@
     <string name="change_music_folder">Change Music Folder</string>
     <string name="help_command">
         Songs:\n
+        search song_name\n
         play song "song_name"\n
         play recent\n
         play popular\n

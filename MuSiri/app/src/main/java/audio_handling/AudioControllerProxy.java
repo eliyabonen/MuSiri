@@ -1,4 +1,4 @@
-package AudioHandling;
+package audio_handling;
 
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -68,7 +68,13 @@ public class AudioControllerProxy
 
     public void playSong(final String path)
     {
-        audioController.playSong(path);
+        audioController.playSong(path, new hideButtonsInterface() {
+            @Override
+            public void hideMusicButtons()
+            {
+                showMusicButtons(false);
+            }
+        });
         showMusicButtons(true);
     }
 
